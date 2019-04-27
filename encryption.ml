@@ -327,6 +327,7 @@ module Io = struct
     (* list of all validations to be performed on argv, in the order they are to
        be performed *)
     let check_list
+        : G.t -> (string -> (string, string) t) list
       = fun enc_or_dec -> [
           underscore
         ; long_enough enc_or_dec
@@ -335,9 +336,12 @@ module Io = struct
     (* turn a list of individual validation functions into one big validation
        function that sequences all of them over the entire argv *)
     let mk_validate
+        : string list ->
+          (string -> (string, string) t) list ->
+          (string list, string) t
       = fun strings clist ->
       map lift clist 
-      |> foldl (>>=) (pure strings)
+      |> foldl (>>=) (strings |> rev |> pure)
   end
   module C = Checks
 
@@ -357,6 +361,7 @@ module Io = struct
 
   (* function that performs all validations on all files in the argv *)
   let validate
+      : G.t -> string list -> (string list, string) Result.t
     = fun enc_or_dec strings ->
     C.mk_validate strings @@ C.check_list enc_or_dec
 end
