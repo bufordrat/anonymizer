@@ -1,0 +1,6 @@
+description = "KW's OCaml Prelude"
+requires = "unix"
+archive(byte) = "prelude.cma"
+archive(native) = "prelude.cmxa"
+plugin(byte) = "prelude.cma"
+plugin(native) = "prelude.cmxs"

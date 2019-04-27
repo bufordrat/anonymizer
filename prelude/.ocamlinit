@@ -1,0 +1,9 @@
+let () = Topdirs.dir_directory (Sys.getenv "OCAML_TOPLEVEL_PATH");;
+#use "topfind";;
+#directory "_build" ;;
+#require "unix" ;;
+#require "benchmark" ;;
+#require "qcheck" ;;
+#load_rec "prelude.cma" ;;
+open Prelude ;;
+module Benchmark = Extended.Benchmark (Benchmark) ;;

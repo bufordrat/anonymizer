@@ -1,0 +1,10 @@
+2018-05-14  Keith Waclena  <keith@lib.uchicago.edu>
+
+	* prelude.ml
+	(Multiset): major API changes; bugfixes; tests
+	(revcmp): new
+	(T3): new
+	(Float): new
+	(Pair): new: to_string, iter
+	(Lists.comparison): generate comparison functions for lists
+

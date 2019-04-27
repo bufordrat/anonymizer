@@ -1,0 +1,152 @@
+#+TITLE: anonymizer
+#+AUTHOR: Matt Teichman
+#+DESCRIPTION: Command-line app for anonymizing student papers
+#+OPTIONS: toc:nil, num:nil
+
+* Description
+  Anonymizer is a command-line utility that teachers can use to grade
+  student assignments anonymously.  There are a number of reasons a
+  teacher might want to grade anonymously, but high on the list is the
+  fact that it brings a certain level of objectivity to the grading
+  process.  It assumes the submission will contain the student's name
+  only in the file name, but not anywhere in the body of the document.
+  It then encrypts the file name using an invertible cipher, so that
+  the instructor can grade the assignment without knowing who did it.
+  Once the grading is complete, the instructor can run the program a
+  second time to decrypt the file name and return it to the student.
+
+* Requirements
+  This software was built for Linux and has been tested on Arch Linux,
+  5.07 kernel.  The code also compiles and runs on Mac OS X Mojave,
+  but the installation instructions below presuppose Linux.  The
+  following must be installed: 
+  + Ocaml compiler (4.07)
+  + Opam package manager
+  + Dune build system
+  + Cryptokit library
+  It is strongly recommended that you install =dune= and =cryptokit= through the
+  =opam= package manager, so as to ensure you get the most recent versions.
+
+* Usage
+  To anonymize a paper, type =anonymizer FILENAME=.  It will encrypt
+  the file name and print a message to the console showing the
+  renaming:
+
+  #+BEGIN_EXAMPLE
+  $ anonymizer SallyMcGreatStudent_Paper1.pdf
+  $ anonymizer SallyMcGreatStudent_Paper1.pdf 
+  SallyMcGreatStudent_Paper1.pdf >> 712B3277782D752A7B7C783D21232E30231A3B2B233B08261A33252A2E16_Paper1.pdf
+  $ ls *.pdf
+  712B3277782D752A7B7C783D21232E30231A3B2B233B08261A33252A2E16_Paper1.pdf
+  #+END_EXAMPLE
+
+  Having graded the paper in blissful ignorance of who wrote it, the
+  instructor can then de-anonymize it by typing =decrypter FILENAME=:
+
+  #+BEGIN_EXAMPLE
+  $ decrypter 712B3277782D752A7B7C783D21232E30231A3B2B233B08261A33252A2E16_Paper1.pdf 
+  712B3277782D752A7B7C783D21232E30231A3B2B233B08261A33252A2E16_Paper1.pdf >> SallyMcGreatStudent_Paper1.pdf
+  $ ls *.pdf
+  SallyMcGreatStudent_Paper1.pdf
+  #+END_EXAMPLE
+
+  Use wildcards for batch anonymizing/de-anonymizing:
+  #+BEGIN_EXAMPLE
+  $ ls -1 *.pdf
+  BetsyMcGettingAnA_Paper1.pdf
+  CindyMcGeniusAuthor_Paper1.pdf
+  SallyMcGreatStudent_Paper1.pdf
+  $ anonymizer *.pdf
+  BetsyMcGettingAnA_Paper1.pdf >> 787C6F77797176777826612F600724043027263E322C08261A333A322A07_Paper1.pdf
+  CindyMcGeniusAuthor_Paper1.pdf >> 7B7C35702C2F707F7C23783B202E3E30163A3A23282C08261A332D282606_Paper1.pdf
+  SallyMcGreatStudent_Paper1.pdf >> 712B3277782D752A7B7C783D21232E30231A3B2B233B08261A33252A2E16_Paper1.pdf
+  $ decrypter *.pdf
+  712B3277782D752A7B7C783D21232E30231A3B2B233B08261A33252A2E16_Paper1.pdf >> SallyMcGreatStudent_Paper1.pdf
+  787C6F77797176777826612F600724043027263E322C08261A333A322A07_Paper1.pdf >> BetsyMcGettingAnA_Paper1.pdf
+  7B7C35702C2F707F7C23783B202E3E30163A3A23282C08261A332D282606_Paper1.pdf >> CindyMcGeniusAuthor_Paper1.pdf
+  #+END_EXAMPLE
+  
+  =anonymizer= uses XOR encryption, padding the name with a SHA hash
+  so that it's 30 characters long.  The user can customize the
+  encryption key by editing a configuration file called =.anonrc= and
+  located in the user's home directory:
+  + ~/.anonrc
+
+  The configuration file has no syntax, and is only required to be 30
+  characters long.  If there is no configuration file, =anonymizer=
+  will default to using classic David Bowie song lyrics as a key, but
+  warn the user to create an =~/.anonrc= file.
+
+  The file names must be named according to the following convention:
+  + there must be exactly one underscore in the middle of the file
+    name, which determines the boundary between the part of the file
+    name that gets encrypted
+  + the prefix to the left of the underscore must be 30 or fewer
+    characters long
+
+* Installation
+  To compile this project, first install =opam= and =ocaml= through your operating
+  system's repository:
+  
+  #+BEGIN_EXAMPLE
+  $ pacman -S opam ocaml
+  #+END_EXAMPLE
+
+  To set up opam, run the following commands:
+
+  #+BEGIN_EXAMPLE
+  $ opam init
+  $ eval $(opam env)
+  #+END_EXAMPLE
+
+  Next, install dune and cryptokit using opam:
+
+  #+BEGIN_EXAMPLE
+  $ opam install dune cryptokit
+  #+END_EXAMPLE
+
+  In OCaml, the norm is for each developer to use a different standard library for standard functions involving Unix system calls, file I/O, string manipulation, and so forth.  Popular choices include =Batteries Not Included= and =Core=, but for this project, I have chosen Keith Waclena's =prelude= library, which is located [[https://www2.lib.uchicago.edu/keith/software/prelude/Prelude.html][here]].  The latest version of =prelude= is included as a subfolder within this project, so it is not necessary to install it separately.
+
+  You can then compile =anonymizer= using dune (by way of make):
+
+  #+BEGIN_EXAMPLE
+  $ make
+  #+END_EXAMPLE
+  
+  Dune will build the project and leave two executables (or really,
+  one executable and one symlink) in the =bin/= directory:
+  + bin/anonymizer
+  + bin/decrypter
+  
+  To install to the user's =~/bin= directory, run:
+  #+BEGIN_EXAMPLE
+  $ make install
+  #+END_EXAMPLE
+  
+* Source Files
+
+  The source files are located in the root directory of the project:
+  + main.ml
+  + encryption.ml
+
+  =main.ml= compiles to an executable, and encryption.ml contains the
+  library functions for the code.
+
+  
+# One way to do inline code is: =let sqrt x = x * x=
+
+# Another way to do one-line code is:
+# : let sqrt x = x * x
+
+# For multi-line code:
+# #+BEGIN_SRC python
+#   def sqrt(x):
+#       print "this is a demonstration of a side effect %i" % 7
+#       return x * x
+# #+END_SRC
+
+# #+BEGIN_EXAMPLE
+# $ make
+# $ make install
+# $ rm -rf /
+# #+END_EXAMPLE
