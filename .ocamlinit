@@ -1,6 +1,11 @@
+(* configuration file for loading the code into the toplevel using tuareg-mode
+   in Emacs *)
+
+let () = Topdirs.dir_directory (Sys.getenv "OCAML_TOPLEVEL_PATH");;
 #use "topfind";;
 #require "cryptokit";;
 #directory "_build/default/.main.eobjs/byte";;
+#directory "_build/default/prelude/.prelude.objs/byte";;
 #load_rec "main.cmo";;
 open Prelude;;
 open Encryption;;
