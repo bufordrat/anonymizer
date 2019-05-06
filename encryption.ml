@@ -41,6 +41,23 @@ module Manip = struct
       : int
     = G.cap
 
+  (* convert first character of string to an int if it is alphabetic *)
+  let remove_num
+      : string -> string
+    = fun str ->
+    let open String in
+    let head = take 1 str in
+    let modsum n = n
+                   |> (flip get) 0
+                   |> Char.to_int
+                   |> fun x -> x mod 6
+    in
+    if head
+       |> (flip get) 0
+       |> Char.Alphabetic.is
+    then (string_of_int @@ modsum head) ^ drop 1 str
+    else str
+
   (* make input string into a string of length 30, padding if necessary *)
   let prep_string
       : string -> string
@@ -52,6 +69,7 @@ module Manip = struct
     else str ^ "/" ^ Crypto.sha str
          |> take cap
          |> rev
+         |> remove_num
     
   (* convert string to list of ascii values of its characters *)
   let make_numeric
