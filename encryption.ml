@@ -265,14 +265,14 @@ module Io = struct
     let too_long
         : string -> string -> int -> int -> string
       = fun arg fn wanted got ->
-      sprintf "%s: \n%s:\n file prefix must be fewer than \
+      sprintf "%s: \n %s:\n file prefix must be fewer than \
                %i characters long\n\ this prefix is %i characters \
                long" arg fn wanted got
 
     let wrong_length
         : string -> string -> int -> int -> string
       = fun arg fn wanted got ->
-      sprintf "%s: \n%s:\n file prefix must be exactly %i characters \
+      sprintf "%s: \n %s:\n file prefix must be exactly %i characters \
                long\n this prefix is %i characters long" arg fn wanted got
 
     let no_config
@@ -293,13 +293,13 @@ module Io = struct
     let wrong_key
         : string -> string -> string
       = fun arg fn ->
-      sprintf "%s: \n%s \n would decrypt to a gibberish file name. \n \
+      sprintf "%s: \n %s \n would decrypt to a gibberish file name. \n \
                I think you're using the wrong config file." arg fn
 
     let not_encrypted
         : string -> string -> string
       = fun arg fn ->
-      sprintf "%s: \n%s: this name doesn't look encrypted!\n \
+      sprintf "%s: \n %s: that file name doesn't look encrypted!\n \
                I think you meant to encrypt rather than decrypt." arg fn
       
   end
@@ -376,11 +376,14 @@ module Io = struct
     let correctly_encrypted
         : G.t -> string -> string -> (string, string) t
       = fun enc_or_dec arg str ->
+      let try_to_hex s =
+        s |> prefix |> M.twos |> map M.hex_to_int
+      in
       match enc_or_dec with
       | Decrypt ->
          (
-           match (M.make_numeric $. prefix) str with
-           | exception _ -> err @@ Msg.not_encrypted arg str
+           match try_to_hex str with
+           | exception int_of_string -> err @@ Msg.not_encrypted arg str
            | _ -> ok str
          )
       | Encrypt -> ok str
