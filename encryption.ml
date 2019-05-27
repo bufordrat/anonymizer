@@ -68,7 +68,7 @@ module Manip = struct
          |> rev
     else str ^ "/" ^ Crypto.sha str
          |> take cap
-         |> rev
+         |> rev 
          |> remove_num
     
   (* convert string to list of ascii values of its characters *)
@@ -292,6 +292,20 @@ module Io = struct
         : string
       = sprintf "%s: ~/.anonrc config file must be at least 30 \
                  characters long." argv0
+
+    let wrong_key
+        : string -> string
+      = fun fn ->
+      sprintf "%s \n \
+               would decrypt to a gibberish file name. \n\
+               I think you're using the wrong config file." fn
+
+    let not_encrypted
+        : string -> string
+      = fun fn ->
+      sprintf "%s: this name doesn't look encrypted!\n\
+               I think you meant to encrypt rather than decrypt." fn
+      
   end
   module Msg = Messages
 
@@ -307,7 +321,7 @@ module Io = struct
                                    else acc) 0
       in
       let errm =
-        err @@ sprintf "%s: file name must contain two parts \
+        err @@ sprintf "%s:\nfile name must contain two parts \
                         separated by exactly one underscore" fn
       in
       match String.split ~elide:false ~sep:"_" fn with
@@ -342,12 +356,47 @@ module Io = struct
       | Encrypt -> do_check Msg.too_long G.cap str
       | Decrypt -> do_check Msg.wrong_length (G.cap * 2) str
 
+    (* make sure the user didn't actually encrypt this file name with a
+       different config file than the one they're currently using *)
+    let right_key
+        : G.t -> string -> string -> (string, string) t
+      = fun enc_or_dec key str ->
+      let open Manip in
+      (* predicate for alphanumeric characters *)
+      let alpha_num chr =
+        Chars.Alphabetic.is chr || Chars.Decimal.is chr
+      in
+      (* predicate for alphanumeric strings *)
+      let kosher str =
+        Strings.foldl (fun x y -> x && alpha_num y) true str
+      in
+      match enc_or_dec with
+      | G.Decrypt -> if kosher (decrypt key @@ prefix str)
+                     then ok str 
+                     else err @@ Msg.wrong_key str
+      | G.Encrypt -> ok str
+
+    (* make sure you aren't trying to decrypt a non-encrypted file name *)
+    let correctly_encrypted
+        : G.t -> string -> (string, string) t
+      = fun enc_or_dec str ->
+      match enc_or_dec with
+      | Decrypt ->
+         (
+           match catch (M.make_numeric $. prefix) str with
+           | Some _ -> ok str
+           | None -> err @@ Msg.not_encrypted str
+         )
+      | Encrypt -> ok str
+                   
     (* list of all validations to be performed on argv, in the order they are to
        be performed *)
     let check_list
-        : G.t -> (string -> (string, string) t) list
-      = fun enc_or_dec -> [
+        : G.t -> string -> (string -> (string, string) t) list
+      = fun enc_or_dec key -> [
           underscore
+        ; correctly_encrypted enc_or_dec
+        ; right_key enc_or_dec key
         ; long_enough enc_or_dec
         ]
 
@@ -379,9 +428,9 @@ module Io = struct
 
   (* function that performs all validations on all files in the argv *)
   let validate
-      : G.t -> string list -> (string list, string) Result.t
-    = fun enc_or_dec strings ->
-    C.mk_validate strings @@ C.check_list enc_or_dec
+      : G.t -> string -> string list -> (string list, string) Result.t
+    = fun enc_or_dec key strings ->
+    C.mk_validate strings @@ C.check_list enc_or_dec key
 end
 
 module Main = struct
@@ -414,7 +463,7 @@ module Main = struct
       : G.t -> unit
     = fun enc_or_dec ->
     if key_ok
-    then match validate enc_or_dec argv with
+    then match validate enc_or_dec full_key argv with
          | Ok [] -> exit_gracefully usage_message
          | Ok lst -> mass_rename configless enc_or_dec lst
          | Error msg -> exit_gracefully msg
