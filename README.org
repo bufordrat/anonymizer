@@ -80,7 +80,7 @@
   The file names must be named according to the following convention:
   + there must be exactly one underscore in the middle of the file
     name, which determines the boundary between the part of the file
-    name that gets encrypted
+    name that gets encrypted and the part that doesn't
   + the prefix to the left of the underscore must be 30 or fewer
     characters long
 
