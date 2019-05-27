@@ -44,16 +44,9 @@ module Manip = struct
       : string -> string
     = fun str ->
     let open String in
-    let head = take 1 str in
-    let modsum n = n
-                   |> (flip get) 0
-                   |> Char.to_int
-                   |> fun x -> x mod 6
-    in
-    if head
-       |> (flip get) 0
-       |> Char.Alphabetic.is
-    then (string_of_int @@ modsum head) ^ drop 1 str
+    let head = take 1 str |> (flip get) 0 in
+    if head |> Char.Alphabetic.is
+    then (int_of_char head - 97 |> string_of_int) ^ drop 1 str
     else str
 
   (* make input string into a string of length 30, padding if necessary *)
