@@ -20,5 +20,5 @@ let whoami
 
 (* run program in either encrypting or decrypting mode *)
 let () = if not !Sys.interactive
-         then syserrors Main.main (whoami ())
+         then syserrors (Main.main (whoami ()) argv0) argv
          else ()

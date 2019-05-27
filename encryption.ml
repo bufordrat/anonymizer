@@ -20,18 +20,16 @@ module Crypto = struct
   (* helper function for hashing *)
   let hash
       : (unit -> Cryptokit.hash) -> string -> string
-    =
+    = fun hashgen str ->
     let open Cryptokit in
     let open Hexa in
-    fun hashgen str ->
     hash_string (hashgen ()) str
     |> transform_string @@ encode ()
 
   (* return the SHA hash of a string *)
   let sha
       : string -> string
-    =
-    fun str ->
+    = fun str ->
     (hash Cryptokit.Hash.sha256) str
 end
 
@@ -74,8 +72,7 @@ module Manip = struct
   (* convert string to list of ascii values of its characters *)
   let make_numeric
       : string -> int list
-    =
-    fun str ->
+    = fun str ->
     prep_string str
     |> String.explode
     |> map int_of_char
@@ -84,8 +81,7 @@ module Manip = struct
      odd-length strings *)
   let rec twos
           : string -> string list
-    =
-    fun str ->
+    = fun str ->
     assert (String.length str |> even)
     ; match str with
       | "" -> []
@@ -94,8 +90,7 @@ module Manip = struct
   (* prep and then XOR encrypt a file prefix using input key *)
   let encrypt
       : string -> string -> string
-    =
-    fun key str ->
+    = fun key str ->
     let lst1 = make_numeric str in
     let lst2 = make_numeric key in
     map2 (lxor) lst1 lst2
@@ -105,16 +100,14 @@ module Manip = struct
   (* convert string hex representation to integer *)
   let hex_to_int
       : string -> int
-    =
-    fun str ->
+    = fun str ->
     int_of_string @@ "0x" ^ str
 
   (* XOR decrypt a file prefix using input key, then trim the pad to get back to
      original string *)
   let decrypt
       : string -> string -> string
-    =
-    fun key str ->
+    = fun key str ->
     let lst2 = make_numeric key in
     twos str
     |> map hex_to_int
@@ -246,8 +239,7 @@ module Io = struct
   (* grab key from config file if it exists; otherwise use default *)
   let get_key
       : string -> string
-    =
-    fun fn ->
+    = fun fn ->
     match readfile fn with
     | exception _ -> default_key
     | x -> x
@@ -260,8 +252,9 @@ module Io = struct
   (* error messages *)
   module Messages = struct
     let usage_message
-        : string
-      = Printf.sprintf "USAGE: %s PAPER ..." argv0
+        : string -> string
+      = fun arg ->
+      sprintf "USAGE: %s PAPER ..." arg
 
     let exit_gracefully 
         : string -> unit
@@ -270,41 +263,44 @@ module Io = struct
       ; exit 1
 
     let too_long
-        : string -> int -> int -> string
-      = fun fn wanted got ->
-      sprintf "%s: file prefix must be fewer than %i characters long\n\
-               this prefix is %i characters long" fn wanted got
+        : string -> string -> int -> int -> string
+      = fun arg fn wanted got ->
+      sprintf "%s: \n%s:\n file prefix must be fewer than \
+               %i characters long\n\ this prefix is %i characters \
+               long" arg fn wanted got
 
     let wrong_length
-        : string -> int -> int -> string
-      = fun fn wanted got ->
-      sprintf "%s: file prefix must be exactly %i characters long\n\
-               this prefix is %i characters long" fn wanted got
+        : string -> string -> int -> int -> string
+      = fun arg fn wanted got ->
+      sprintf "%s: \n%s:\n file prefix must be exactly %i characters \
+               long\n this prefix is %i characters long" arg fn wanted got
 
     let no_config
-        : string
-      = "warning: no config file \n\
-         please create a config file called ~/.anonrc \n\
-         any string will work as a key, as long as it's \
-         30 characters long"
+        : string -> string
+      = fun arg ->
+      sprintf "%s: no config file \n \
+               please create a config file called ~/.anonrc \n \
+               any string will work as a key, as long as it's \
+               30 characters long\n \
+               for now, using the default key..." arg
 
     let short_config
-        : string
-      = sprintf "%s: ~/.anonrc config file must be at least 30 \
-                 characters long." argv0
+        : string -> string
+      = fun arg ->
+      sprintf "%s: ~/.anonrc config file must be at least 30 \
+               characters long." arg
 
     let wrong_key
-        : string -> string
-      = fun fn ->
-      sprintf "%s \n \
-               would decrypt to a gibberish file name. \n\
-               I think you're using the wrong config file." fn
+        : string -> string -> string
+      = fun arg fn ->
+      sprintf "%s: \n%s \n would decrypt to a gibberish file name. \n \
+               I think you're using the wrong config file." arg fn
 
     let not_encrypted
-        : string -> string
-      = fun fn ->
-      sprintf "%s: this name doesn't look encrypted!\n\
-               I think you meant to encrypt rather than decrypt." fn
+        : string -> string -> string
+      = fun arg fn ->
+      sprintf "%s: \n%s: this name doesn't look encrypted!\n \
+               I think you meant to encrypt rather than decrypt." arg fn
       
   end
   module Msg = Messages
@@ -342,8 +338,8 @@ module Io = struct
     (* check whether string is the correct length, depending on whether the
        program is encrypting or decrypting *)
     let long_enough
-        : G.t -> string -> (string, string) t
-      = fun enc_or_dec str ->
+        : G.t -> string -> string -> (string, string) t
+      = fun enc_or_dec arg str ->
       let do_check msg cap str
         = if String.length @@ prefix str <= cap
           then ok str
@@ -353,14 +349,14 @@ module Io = struct
                @@ prefix str
       in
       match enc_or_dec with
-      | Encrypt -> do_check Msg.too_long G.cap str
-      | Decrypt -> do_check Msg.wrong_length (G.cap * 2) str
+      | Encrypt -> do_check (Msg.too_long arg) G.cap str
+      | Decrypt -> do_check (Msg.wrong_length arg) (G.cap * 2) str
 
     (* make sure the user didn't actually encrypt this file name with a
        different config file than the one they're currently using *)
     let right_key
-        : G.t -> string -> string -> (string, string) t
-      = fun enc_or_dec key str ->
+        : G.t -> string -> string -> string -> (string, string) t
+      = fun enc_or_dec arg key str ->
       let open Manip in
       (* predicate for alphanumeric characters *)
       let alpha_num chr =
@@ -373,31 +369,31 @@ module Io = struct
       match enc_or_dec with
       | G.Decrypt -> if kosher (decrypt key @@ prefix str)
                      then ok str 
-                     else err @@ Msg.wrong_key str
+                     else err @@ Msg.wrong_key arg str
       | G.Encrypt -> ok str
 
-    (* make sure you aren't trying to decrypt a non-encrypted file name *)
+    (* make sure user isn't trying to decrypt a non-encrypted file name *)
     let correctly_encrypted
-        : G.t -> string -> (string, string) t
-      = fun enc_or_dec str ->
+        : G.t -> string -> string -> (string, string) t
+      = fun enc_or_dec arg str ->
       match enc_or_dec with
       | Decrypt ->
          (
-           match catch (M.make_numeric $. prefix) str with
-           | Some _ -> ok str
-           | None -> err @@ Msg.not_encrypted str
+           match (M.make_numeric $. prefix) str with
+           | exception _ -> err @@ Msg.not_encrypted arg str
+           | _ -> ok str
          )
       | Encrypt -> ok str
                    
     (* list of all validations to be performed on argv, in the order they are to
        be performed *)
     let check_list
-        : G.t -> string -> (string -> (string, string) t) list
-      = fun enc_or_dec key -> [
+        : G.t -> string -> string -> (string -> (string, string) t) list
+      = fun enc_or_dec arg key -> [
           underscore
-        ; correctly_encrypted enc_or_dec
-        ; right_key enc_or_dec key
-        ; long_enough enc_or_dec
+        ; correctly_encrypted enc_or_dec arg
+        ; right_key enc_or_dec arg key
+        ; long_enough enc_or_dec arg
         ]
 
     (* turn a list of individual validation functions into one big validation
@@ -409,28 +405,28 @@ module Io = struct
       = fun strings clist ->
       map lift clist 
       |> foldl (>>=) (strings |> rev |> pure)
+
+    (* function that performs all validations on all files in the argv *)
+    let validate
+        : G.t -> string -> string -> string list -> (string list, string) t
+      = fun enc_or_dec arg key strings ->
+      mk_validate strings @@ check_list enc_or_dec arg key
   end
   module C = Checks
 
   (* rename a file to its encrypted/decrypted version *)
   let rename
       : G.t -> string -> unit
-    = fun which fn ->
+    = fun enc_or_dec fn ->
     let open G in
     let rename' func_name =
       Sys.rename fn (func_name full_key fn)
       ; func_name full_key fn
         |> Printf.printf "%s >> %s\n" fn
     in
-    match which with
+    match enc_or_dec with
     | Encrypt -> rename' M.encrypt_fn
     | Decrypt -> rename' M.decrypt_fn
-
-  (* function that performs all validations on all files in the argv *)
-  let validate
-      : G.t -> string -> string list -> (string list, string) Result.t
-    = fun enc_or_dec key strings ->
-    C.mk_validate strings @@ C.check_list enc_or_dec key
 end
 
 module Main = struct
@@ -449,23 +445,23 @@ module Main = struct
 
   (* rename all files in an input list, with warning if there's no config *)
   let mass_rename
-      : bool -> G.t -> string list -> unit
-    = fun configless enc_or_dec lst ->
+      : bool -> G.t -> string -> string list -> unit
+    = fun configless enc_or_dec arg lst ->
     let doit () =
       iter (rename enc_or_dec) lst
       ; exit 0
     in
     if configless
-    then (print no_config ; doit ())
+    then (print @@ no_config arg ; doit ())
     else doit ()
 
   let main
-      : G.t -> unit
-    = fun enc_or_dec ->
+      : G.t -> string -> string list -> unit
+    = fun enc_or_dec arg args ->
     if key_ok
-    then match validate enc_or_dec full_key argv with
-         | Ok [] -> exit_gracefully usage_message
-         | Ok lst -> mass_rename configless enc_or_dec lst
+    then match C.validate enc_or_dec arg full_key args with
+         | Ok [] -> exit_gracefully (usage_message arg)
+         | Ok lst -> mass_rename configless enc_or_dec arg lst
          | Error msg -> exit_gracefully msg
-    else exit_gracefully short_config
+    else exit_gracefully (short_config arg)
 end
