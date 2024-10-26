@@ -1,7 +1,0 @@
-;; -*- lisp -*-
-(env
- (dev ; make warnings non-fatal
-  (flags (:standard -w -a))))
-(executable
- (name main)
- (libraries cryptokit prelude))

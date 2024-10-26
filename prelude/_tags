@@ -1,3 +1,0 @@
-true : short_paths, bin_annot, safe_string, predicate(mt_posix), predicate(mt)
-true : package(bytes), package(unix)
-"lc" : traverse
