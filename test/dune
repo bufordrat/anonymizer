@@ -1,0 +1,11 @@
+(test
+ (name test_anonymizer)
+ (libraries encryption))
+
+(env
+ (dev
+  (flags (:standard -warn-error -A))))
+
+; Local Variables:
+; mode: dune
+; End:

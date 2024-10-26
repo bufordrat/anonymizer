@@ -1,0 +1,7 @@
+(library
+ (name encryption)
+ (libraries cryptokit prelude etude))
+
+; Local Variables:
+; mode: dune
+; End:

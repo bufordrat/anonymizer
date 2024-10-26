@@ -1,0 +1,13 @@
+(executable 
+ (public_name anonymizer) 
+ (name anonymizer)
+ (promote (until-clean))
+ (libraries camlp-streams prelude etude encryption)) 
+
+(env
+ (dev
+  (flags (:standard -warn-error -A))))
+
+; Local Variables:
+; mode: dune
+; End:
